@@ -1,5 +1,5 @@
 window.MAHAKESHER_FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyC1RYjPzTFNeqPr5-mvoGTdm00yK3Uzw80',
+  apiKey: 'AIzaSyDrun3px72VnapzlXS-feiGjcsiHr4ESdE',
   authDomain: 'mahakesher2nekuda0.firebaseapp.com',
   databaseURL: 'https://mahakesher2nekuda0-default-rtdb.europe-west1.firebasedatabase.app',
   projectId: 'mahakesher2nekuda0',

@@ -1,0 +1,72 @@
+import { firebaseConfigured, ensureSignedIn, read } from './firebase.js';
+import { CURRENT_PUZZLE, scramble, validatePuzzle } from './puzzle.js';
+import { getPlayer, setPlayer, findPlayer, recordPlayerFinish } from './players.js';
+import { getStats, recordResult } from './stats.js';
+import { openDialog, showMessage } from './dialogs.js';
+import { highlight, shake } from './animations.js';
+import { shareResult } from './share.js';
+
+const MAX_MISTAKES = 5;
+const state = { puzzle: null, words: [], selected: new Set(), solved: [], mistakes: 0, attempts: new Set(), finished: false, saved: false, player: getPlayer() };
+const $ = selector => document.querySelector(selector);
+
+async function loadPuzzle() {
+  let puzzle = null;
+  if (firebaseConfigured) {
+    try { await ensureSignedIn(); const gameId = await read('games/currentGameId'); if (gameId) puzzle = await read(`puzzles/${gameId}`); } catch (error) { console.warn('Could not load Firebase puzzle.', error); }
+  }
+  state.puzzle = validatePuzzle(puzzle) ? CURRENT_PUZZLE : puzzle;
+  state.words = scramble(state.puzzle.groups.flatMap((group, groupIndex) => group.words.map((word, wordIndex) => ({ word, groupIndex, id: `${groupIndex}-${wordIndex}` }))));
+  $('#puzzle-title').textContent = state.puzzle.title;
+  $('#puzzle-number').textContent = state.puzzle.id === CURRENT_PUZZLE.id ? 'חידת הבכורה' : `חידה ${state.puzzle.id}`;
+  $('#connection-status').textContent = firebaseConfigured ? 'מחובר ל־Firebase' : 'מצב מקומי';
+  render();
+}
+function render() {
+  const board = $('#board'); board.replaceChildren();
+  state.words.filter(tile => !state.solved.includes(tile.groupIndex)).forEach(tile => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'tile'; button.dataset.id = tile.id; button.textContent = tile.word;
+    button.setAttribute('aria-pressed', String(state.selected.has(tile.id))); button.addEventListener('click', () => toggleTile(tile.id)); board.append(button);
+  });
+  const solvedRows = $('#solved-rows'); solvedRows.replaceChildren(); state.solved.forEach(groupIndex => {
+    const group = state.puzzle.groups[groupIndex]; const row = document.createElement('article'); row.className = 'solved-row'; row.style.background = group.color; row.innerHTML = `<h2>${escapeHtml(group.title)}</h2>${group.description ? `<p>${escapeHtml(group.description)}</p>` : ''}<div class="words">${group.words.map(escapeHtml).join(' · ')}</div>`; solvedRows.append(row);
+  });
+  const pips = $('#mistakes'); pips.replaceChildren(); for (let index = 0; index < MAX_MISTAKES; index += 1) { const pip = document.createElement('i'); pip.className = `pip ${index < state.mistakes ? 'used' : ''}`; pips.append(pip); }
+  $('#submit-button').disabled = state.selected.size !== 4 || state.finished;
+  $('#clear-button').disabled = !state.selected.size || state.finished;
+  $('#hint-button').disabled = state.finished;
+  $('#shuffle-button').disabled = state.finished;
+}
+function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
+function setStatus(message, error = false) { const element = $('#game-status'); element.textContent = message; element.classList.toggle('error', error); }
+function toggleTile(id) { if (state.finished) return; if (state.selected.has(id)) state.selected.delete(id); else if (state.selected.size < 4) state.selected.add(id); else { setStatus('אפשר לבחור עד ארבע מילים.', true); return; } setStatus(state.selected.size === 4 ? 'מוכנים? שלחו את הבחירה.' : 'בחרו ארבע מילים שיש ביניהן קשר.'); render(); }
+function selectionKey(selected) { return [...selected].sort().join('|'); }
+function submit() {
+  if (state.selected.size !== 4 || state.finished) return;
+  const selected = state.words.filter(tile => state.selected.has(tile.id)); const key = selectionKey(state.selected);
+  const matched = state.puzzle.groups.findIndex((group, groupIndex) => !state.solved.includes(groupIndex) && selected.every(tile => group.words.includes(tile.word)));
+  if (matched >= 0) { state.solved.push(matched); state.selected.clear(); setStatus('נכון! מצאתם קבוצה.'); render(); if (state.solved.length === 4) finish(true); return; }
+  if (state.attempts.has(key)) { setStatus('כבר ניסיתם את הרביעייה הזאת.', true); return; }
+  state.attempts.add(key); const largestMatch = Math.max(...state.puzzle.groups.filter((_, index) => !state.solved.includes(index)).map(group => selected.filter(tile => group.words.includes(tile.word)).length));
+  state.mistakes += 1; setStatus(largestMatch === 3 ? 'כמעט, שלוש מארבע.' : 'לא נכון.', true); document.querySelectorAll('.tile[aria-pressed="true"]').forEach(shake); state.selected.clear(); render(); if (state.mistakes >= MAX_MISTAKES) finish(false);
+}
+function shuffleBoard() { if (state.finished) return; state.words = scramble(state.words); state.selected.clear(); setStatus('המילים עורבבו.'); render(); }
+function clearSelection() { state.selected.clear(); setStatus('הבחירה נוקתה.'); render(); }
+function giveHint() { const unsolved = state.puzzle.groups.findIndex((_, index) => !state.solved.includes(index)); const tile = state.words.find(item => item.groupIndex === unsolved && !state.selected.has(item.id)); if (!tile) return; const button = document.querySelector(`[data-id="${tile.id}"]`); highlight(button); setStatus('רמז: אחת המילים המודגשות שייכת לאותה קבוצה.'); }
+async function finish(solved) {
+  state.finished = true; render(); const player = state.player; const result = { finished: true, solved, mistakes: state.mistakes, playerKind: player.kind, playerName: player.name || null, finishedAt: new Date().toISOString(), sessionId: resultId() };
+  const newlyRecorded = await recordPlayerFinish(player, state.puzzle.id, result); if (newlyRecorded) await recordResult(state.puzzle.id, result); state.saved = true;
+  $('#result-panel').hidden = false; $('#result-title').textContent = solved ? 'כל הכבוד!' : 'לא הפעם'; $('#result-copy').textContent = solved ? `פתרתם את החידה עם ${state.mistakes} טעויות.` : 'לא הצלחתם הפעם, אבל אפשר לנסות שוב.'; setStatus(solved ? 'החידה נפתרה.' : 'החידה הסתיימה.', !solved);
+}
+function resultId() { return `${state.puzzle.id}-${state.player.kind === 'named' ? encodeURIComponent(state.player.name) : crypto.randomUUID?.() || Date.now()}`; }
+function resetGame() { state.words = scramble(state.puzzle.groups.flatMap((group, groupIndex) => group.words.map((word, wordIndex) => ({ word, groupIndex, id: `${groupIndex}-${wordIndex}` })))); state.selected.clear(); state.solved = []; state.mistakes = 0; state.attempts.clear(); state.finished = false; state.saved = false; $('#result-panel').hidden = true; setStatus('בחרו ארבע מילים שיש ביניהן קשר.'); render(); }
+async function renderStats() { const stats = await getStats(state.puzzle.id); $('#stats-content').replaceChildren(); const total = document.createElement('p'); total.textContent = stats.total ? `${stats.total} שחקנים ושחקניות סיימו את החידה.` : 'עדיין אין תוצאות של שחקנים מזוהים.'; $('#stats-content').append(total); stats.rows.forEach(row => { const element = document.createElement('div'); element.className = 'stat-row'; element.innerHTML = `<span>${row.label}</span><span class="bar"><i style="width:${row.percent}%"></i></span><strong>${row.percent}%</strong>`; $('#stats-content').append(element); }); openDialog('#stats-dialog'); }
+async function savePlayerFromDialog(event) { event.preventDefault(); const action = event.submitter?.value; if (action === 'guest') { state.player = setPlayer({ kind: 'guest', name: '' }); $('#player-dialog').close(); setStatus('ממשיכים כאורח/ת.'); return; }
+  const name = $('#player-name').value.trim(); if (!name) { showMessage('חסר שם', 'אפשר לכתוב שם או לבחור בהמשך כאורח/ת.'); return; } state.player = setPlayer({ kind: 'named', name }); $('#player-dialog').close(); setStatus(`שלום ${name}, בהצלחה!`);
+}
+let nameCheck;
+function checkKnownName() { clearTimeout(nameCheck); nameCheck = setTimeout(async () => { const name = $('#player-name').value.trim(); const existing = await findPlayer(name); $('#known-player-question').classList.toggle('hidden', !existing); $('#known-player-name').textContent = existing?.name || ''; }, 400); }
+function configurePlayerDialog() { const player = state.player; $('#player-name').value = player.kind === 'named' ? player.name : ''; $('#rename-player').hidden = player.kind !== 'named'; $('#rename-player').onclick = () => { $('#player-name').value = ''; $('#player-name').focus(); }; $('#known-player-question').classList.add('hidden'); openDialog('#player-dialog'); }
+function bind() { $('#submit-button').addEventListener('click', submit); $('#shuffle-button').addEventListener('click', shuffleBoard); $('#clear-button').addEventListener('click', clearSelection); $('#hint-button').addEventListener('click', giveHint); $('#new-game-button').addEventListener('click', resetGame); $('#share-button').addEventListener('click', async () => { try { showMessage('שיתוף', await shareResult({ title: state.puzzle.title, mistakes: state.mistakes, solved: state.solved.length === 4 })); } catch (error) { if (error.name !== 'AbortError') showMessage('שיתוף', 'לא הצלחנו לשתף כרגע.'); } }); $('#stats-button').addEventListener('click', renderStats); $('#player-button').addEventListener('click', configurePlayerDialog); $('#player-form').addEventListener('submit', savePlayerFromDialog); $('#player-name').addEventListener('input', checkKnownName); }
+async function init() { bind(); await loadPuzzle(); if (state.player.kind === 'unknown') configurePlayerDialog(); }
+init();

@@ -1,0 +1,4 @@
+{
+  "database": { "rules": "firebase-rules.json" },
+  "hosting": { "public": ".", "ignore": ["firebase.json", "firebase-rules.json", "README.md", ".git/**"] }
+}

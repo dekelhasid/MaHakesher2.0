@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1b3a57">
+  <title>מה הקשר?</title>
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <a class="brand" href="index.html" aria-label="מה הקשר? - דף הבית">מה הקשר?</a>
+      <div class="header-actions">
+        <button class="text-button" id="player-button" type="button" aria-label="ניהול שחקן">שחקן</button>
+        <button class="icon-button" id="stats-button" type="button" aria-label="סטטיסטיקות">◫</button>
+      </div>
+    </header>
+
+    <section class="intro" aria-labelledby="puzzle-title">
+      <p class="eyebrow" id="puzzle-number">החידה היומית</p>
+      <h1 id="puzzle-title">טוענים חידה…</h1>
+      <p id="game-status" class="status" role="status" aria-live="polite">בחרו ארבע מילים שיש ביניהן קשר.</p>
+    </section>
+
+    <section id="solved-rows" class="solved-rows" aria-label="קבוצות שנפתרו"></section>
+    <section id="board" class="board" aria-label="לוח המילים"></section>
+
+    <section class="game-controls" aria-label="פעולות משחק">
+      <div class="mistake-meter" aria-label="טעויות שנותרו"><span>טעויות שנותרו</span><div id="mistakes" class="pips"></div></div>
+      <div class="control-row">
+        <button class="secondary" id="shuffle-button" type="button">ערבוב</button>
+        <button class="secondary" id="clear-button" type="button">ניקוי</button>
+        <button class="secondary" id="hint-button" type="button">רמז</button>
+        <button class="primary" id="submit-button" type="button" disabled>שליחה</button>
+      </div>
+    </section>
+
+    <section id="result-panel" class="result-panel" hidden>
+      <h2 id="result-title"></h2>
+      <p id="result-copy"></p>
+      <div class="result-actions"><button id="share-button" class="primary" type="button">שיתוף</button><button id="new-game-button" class="secondary" type="button">שחקו שוב</button></div>
+    </section>
+
+    <footer><a href="admin.html">ניהול חידות</a><span>·</span><span id="connection-status">מצב מקומי</span></footer>
+  </main>
+
+  <dialog id="player-dialog" class="modal">
+    <form method="dialog" id="player-form">
+      <button class="close" value="cancel" aria-label="סגירה">×</button>
+      <h2>מי משחק/ת?</h2>
+      <p>שם מאפשר לשמור היסטוריה ורצף משחקים. אפשר גם להמשיך כאורח/ת.</p>
+      <label for="player-name">שם</label>
+      <input id="player-name" name="player-name" maxlength="32" autocomplete="name" placeholder="לדוגמה: דקל">
+      <p id="known-player-question" class="hidden">מצאנו שחקן בשם <strong id="known-player-name"></strong>. זה אתה/את? לחצו „המשך” כדי לאשר, או החליפו שם.</p>
+      <div class="dialog-actions"><button class="primary" id="save-player" value="save" type="submit">המשך</button><button class="secondary" id="guest-player" value="guest" type="submit">המשך כאורח/ת</button></div>
+      <button class="link-button" id="rename-player" value="rename" type="button" hidden>החלפת שם</button>
+    </form>
+  </dialog>
+
+  <dialog id="stats-dialog" class="modal"><form method="dialog"><button class="close" value="close" aria-label="סגירה">×</button><h2>סטטיסטיקות החידה</h2><div id="stats-content" class="stats-content"></div></form></dialog>
+  <dialog id="message-dialog" class="modal message-modal"><form method="dialog"><button class="close" value="close" aria-label="סגירה">×</button><h2 id="message-title"></h2><p id="message-copy"></p><div class="dialog-actions"><button class="primary" value="close">הבנתי</button></div></form></dialog>
+
+  <script src="js/firebase-config.js"></script>
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>

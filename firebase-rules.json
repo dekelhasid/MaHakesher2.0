@@ -1,0 +1,21 @@
+{
+  "rules": {
+    ".read": true,
+    "games": {
+      ".write": "auth != null && auth.token.email === 'dekelhasid@gmail.com' && auth.token.email_verified === true"
+    },
+    "stats": {
+      "$gameId": {
+        ".write": "auth != null"
+      }
+    },
+    "players": {
+      "$playerName": {
+        ".write": "auth != null"
+      }
+    },
+    "puzzles": {
+      ".write": "auth != null && auth.token.email === 'dekelhasid@gmail.com' && auth.token.email_verified === true"
+    }
+  }
+}

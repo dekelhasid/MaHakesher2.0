@@ -4,7 +4,7 @@ import { signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/1
 import { COLORS, CURRENT_PUZZLE, validatePuzzle } from './puzzle.js';
 
 const ADMIN_EMAIL = 'admin@mahakesher2nekuda0.com';
-const DEVELOPMENT_MODE = false;
+const DEVELOPMENT_MODE = true;
 const $ = selector => document.querySelector(selector);
 let editingId = null;
 let library = {};

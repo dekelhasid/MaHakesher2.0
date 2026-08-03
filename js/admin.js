@@ -2,7 +2,6 @@ import { firebaseConfigured, firebaseAuth, ensureSignedIn, observeAuth, signOutU
 import { signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js';
 import { COLORS, CURRENT_PUZZLE, validatePuzzle } from './puzzle.js';
 
-const ADMIN_EMAIL = 'dekelhasid@gmail.com';
 const ADMIN_EMAIL = 'admin@mahakesher2nekuda0.com';
 const DEVELOPMENT_MODE = false;
 const $ = selector => document.querySelector(selector);

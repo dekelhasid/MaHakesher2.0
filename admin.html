@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
-  <header class="topbar"><a href="index.html">מה הקשר?</a><span>ניהול חידות</span><button id="auth-button" type="button">התחברות Google</button></header>
+  <header class="topbar"><a href="index.html">מה הקשר?</a><span>ניהול חידות</span><button id="auth-button" type="button">התחברות מנהל</button></header>
   <main class="admin-shell">
-    <section id="access-notice" class="notice"><h1>ניהול חידות</h1><p>יש להתחבר עם חשבון Google מורשה כדי לערוך ולפרסם חידות.</p></section>
+    <section id="access-notice" class="notice"><h1>ניהול חידות</h1><p>יש להתחבר עם סיסמת חשבון המנהל כדי לערוך ולפרסם חידות.</p></section>
     <div id="admin-content" hidden>
-      <section class="editor"><div class="section-heading"><div><p class="eyebrow">עורך חידה</p><h1 id="editor-heading">חידה חדשה</h1></div><span id="draft-state" class="state">טיוטה מקומית</span></div>
+      <section class="editor"><div class="section-heading"><div><p class="eyebrow">עורך חידה</p><h1 id="editor-heading">חידה חדשה</h1></div><span id="draft-state" class="state">טיוטה לא נשמרה</span></div>
         <label class="wide-label">כותרת החידה<input id="puzzle-title-input" maxlength="80" placeholder="לדוגמה: החידה של יום ראשון"></label>
         <div id="groups-editor" class="groups-editor"></div>
         <div class="editor-actions"><button class="secondary" id="new-puzzle" type="button">חידה חדשה</button><button class="secondary" id="save-draft" type="button">שמירת טיוטה</button><button class="primary" id="publish-puzzle" type="button">פרסום כחידה הנוכחית</button></div>
@@ -20,7 +20,8 @@
       <section class="library"><div class="section-heading"><div><p class="eyebrow">שחקנים</p><h2>היסטוריה ורצפים</h2></div></div><div id="players-library" class="puzzle-library"></div></section>
     </div>
   </main>
-  <template id="group-template"><article class="group-card"><div class="group-head"><h2>קבוצה <span class="group-number"></span></h2><input class="group-color" type="color" aria-label="צבע קבוצה"></div><label>שם הקבוצה<input class="group-title" maxlength="90" placeholder="מה הקשר?"></label><label>תיאור (אופציונלי)<input class="group-description" maxlength="120" placeholder="הסבר שיופיע לאחר הפתרון"></label><div class="word-inputs"></div></article></template>
+  <dialog id="auth-dialog" class="auth-dialog"><form id="email-auth-form" method="dialog"><button class="dialog-close" type="button" aria-label="סגירה">×</button><h2>כניסת מנהל</h2><p>הזינו את סיסמת חשבון המנהל כדי לערוך ולפרסם חידות.</p><label>סיסמה<input id="admin-pin" type="password" autocomplete="current-password" required></label><p id="auth-error" role="alert"></p><button class="primary" type="submit">כניסה</button></form></dialog>
+  <template id="group-template"><article class="group-card"><div class="group-head"><h2>קבוצה <span class="group-number"></span></h2><input class="group-color" type="color" aria-label="צבע קבוצה"></div><label>שם הקבוצה<input class="group-title" maxlength="90" placeholder="מה הקשר?"></label><label>רמז<input class="group-hint" maxlength="120" placeholder="הרמז שיוצג במשחק"></label><div class="word-inputs"></div></article></template>
   <script src="js/firebase-config.js"></script>
   <script type="module" src="js/admin.js"></script>
 </body>

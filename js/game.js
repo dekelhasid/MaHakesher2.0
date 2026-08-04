@@ -7,7 +7,7 @@ import { highlight, shake } from './animations.js';
 import { shareResult } from './share.js';
 
 const MAX_MISTAKES = 5;
-const state = { puzzle: null, words: [], selected: new Set(), solved: [], mistakes: 0, attempts: new Set(), finished: false, saved: false, player: getPlayer() };
+const state = { puzzle: null, words: [], selected: new Set(), solved: [], revealAnswers: false, mistakes: 0, attempts: new Set(), finished: false, saved: false, player: getPlayer() };
 const $ = selector => document.querySelector(selector);
 
 async function loadPuzzle() {
@@ -24,11 +24,11 @@ async function loadPuzzle() {
 }
 function render() {
   const board = $('#board'); board.replaceChildren();
-  state.words.filter(tile => !state.solved.includes(tile.groupIndex)).forEach(tile => {
+  state.words.filter(tile => !state.revealAnswers && !state.solved.includes(tile.groupIndex)).forEach(tile => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'tile'; button.dataset.id = tile.id; button.textContent = tile.word;
     button.setAttribute('aria-pressed', String(state.selected.has(tile.id))); button.addEventListener('click', () => toggleTile(tile.id)); board.append(button);
   });
-  const solvedRows = $('#solved-rows'); solvedRows.replaceChildren(); state.solved.forEach(groupIndex => {
+  const solvedRows = $('#solved-rows'); solvedRows.replaceChildren(); const visibleGroups = state.revealAnswers ? state.puzzle.groups.map((_, index) => index) : state.solved; visibleGroups.forEach(groupIndex => {
     const group = state.puzzle.groups[groupIndex]; const row = document.createElement('article'); row.className = 'solved-row'; row.style.background = group.color; row.innerHTML = `<h2>${escapeHtml(group.title)}</h2><div class="words">${group.words.map(escapeHtml).join(' · ')}</div>`; solvedRows.append(row);
   });
   const pips = $('#mistakes'); pips.replaceChildren(); for (let index = 0; index < MAX_MISTAKES; index += 1) { const pip = document.createElement('i'); pip.className = `pip ${index < state.mistakes ? 'used' : ''}`; pips.append(pip); }
@@ -62,12 +62,12 @@ function giveHint() {
   setStatus('הרמז סימן שתי מילים. אפשר להוסיף עוד שתיים ולשלוח את הבחירה.');
 }
 async function finish(solved) {
-  state.finished = true; render(); const player = state.player; const result = { finished: true, solved, mistakes: state.mistakes, playerKind: player.kind, playerName: player.name || null, finishedAt: new Date().toISOString(), sessionId: resultId() };
+  state.finished = true; state.revealAnswers = !solved; render(); const player = state.player; const result = { finished: true, solved, mistakes: state.mistakes, playerKind: player.kind, playerName: player.name || null, finishedAt: new Date().toISOString(), sessionId: resultId() };
   const newlyRecorded = await recordPlayerFinish(player, state.puzzle.id, result); if (newlyRecorded) await recordResult(state.puzzle.id, result); state.saved = true;
-  $('#result-panel').hidden = false; $('#result-title').textContent = solved ? 'כל הכבוד!' : 'לא הפעם'; $('#result-copy').textContent = solved ? `פתרתם את החידה עם ${state.mistakes} טעויות.` : 'לא הצלחתם הפעם, אבל אפשר לנסות שוב.'; setStatus(solved ? 'החידה נפתרה.' : 'החידה הסתיימה.', !solved);
+  $('#result-panel').hidden = false; $('#result-title').textContent = solved ? 'כל הכבוד!' : 'לא הפעם'; $('#result-copy').textContent = solved ? `פתרתם את החידה עם ${state.mistakes} טעויות.` : 'לא הצלחתם הפעם. הפתרון המלא מוצג למעלה.'; setStatus(solved ? 'החידה נפתרה.' : 'החידה הסתיימה והפתרון מוצג.', !solved);
 }
 function resultId() { return `${state.puzzle.id}-${state.player.kind === 'named' ? encodeURIComponent(state.player.name) : crypto.randomUUID?.() || Date.now()}`; }
-function resetGame() { state.words = scramble(state.puzzle.groups.flatMap((group, groupIndex) => group.words.map((word, wordIndex) => ({ word, groupIndex, id: `${groupIndex}-${wordIndex}` })))); state.selected.clear(); state.solved = []; state.mistakes = 0; state.attempts.clear(); state.finished = false; state.saved = false; $('#result-panel').hidden = true; setStatus('בחרו ארבע מילים שיש ביניהן קשר.'); render(); }
+function resetGame() { state.words = scramble(state.puzzle.groups.flatMap((group, groupIndex) => group.words.map((word, wordIndex) => ({ word, groupIndex, id: `${groupIndex}-${wordIndex}` })))); state.selected.clear(); state.solved = []; state.revealAnswers = false; state.mistakes = 0; state.attempts.clear(); state.finished = false; state.saved = false; $('#result-panel').hidden = true; setStatus('בחרו ארבע מילים שיש ביניהן קשר.'); render(); }
 async function renderStats() { const stats = await getStats(state.puzzle.id); $('#stats-content').replaceChildren(); const total = document.createElement('p'); total.textContent = stats.total ? `${stats.total} שחקנים ושחקניות סיימו את החידה.` : 'עדיין אין תוצאות של שחקנים מזוהים.'; $('#stats-content').append(total); stats.rows.forEach(row => { const element = document.createElement('div'); element.className = 'stat-row'; element.innerHTML = `<span>${row.label}</span><span class="bar"><i style="width:${row.percent}%"></i></span><strong>${row.percent}%</strong>`; $('#stats-content').append(element); }); openDialog('#stats-dialog'); }
 async function savePlayerFromDialog(event) { event.preventDefault(); const action = event.submitter?.value; if (action === 'guest') { state.player = setPlayer({ kind: 'guest', name: '' }); $('#player-dialog').close(); setStatus('ממשיכים כאורח/ת.'); return; }
   const name = $('#player-name').value.trim(); if (!name) { showMessage('חסר שם', 'אפשר לכתוב שם או לבחור בהמשך כאורח/ת.'); return; } state.player = setPlayer({ kind: 'named', name }); $('#player-dialog').close(); setStatus(`שלום ${name}, בהצלחה!`);

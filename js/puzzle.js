@@ -1,4 +1,4 @@
-export const COLORS = ['#a6d883', '#8dd4ee', '#b897df', '#f4d378'];
+export const COLORS = ['#a6d883', '#8dd4ee', '#b897df', '#dc5b5b'];
 export const CURRENT_PUZZLE = {
   id: '2026-08-03', title: 'מה הקשר?', createdAt: '2026-08-03T00:00:00.000Z', status: 'published', hint: { words: ['ג׳אז', 'רחם'] },
   groups: [

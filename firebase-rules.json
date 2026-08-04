@@ -1,9 +1,7 @@
 {
   "rules": {
     ".read": true,
-    "games": {
-      ".write": "auth != null && auth.token.email === 'dekelhasid@gmail.com' && auth.token.email_verified === true"
-    },
+    "games": { ".write": "auth != null && auth.token.email === 'admin@mahakesher2nekuda0.com'" },
     "stats": {
       "$gameId": {
         ".write": "auth != null"
@@ -14,8 +12,6 @@
         ".write": "auth != null"
       }
     },
-    "puzzles": {
-      ".write": "auth != null && auth.token.email === 'dekelhasid@gmail.com' && auth.token.email_verified === true"
-    }
+    "puzzles": { ".write": "auth != null && auth.token.email === 'admin@mahakesher2nekuda0.com'" }
   }
 }

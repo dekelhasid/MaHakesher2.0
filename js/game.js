@@ -9,19 +9,24 @@ import { shareResult } from './share.js';
 const MAX_MISTAKES = 5;
 const state = { puzzle: null, words: [], selected: new Set(), solved: [], revealAnswers: false, mistakes: 0, attempts: new Set(), finished: false, saved: false, player: getPlayer() };
 const $ = selector => document.querySelector(selector);
+let currentGameId = null;
 
-async function loadPuzzle() {
-  let puzzle = null;
+async function loadPuzzle(requestedId = null) {
+  let puzzle = null; let gameId = requestedId;
   if (firebaseConfigured) {
-    try { await ensureSignedIn(); const gameId = await read('games/currentGameId'); if (gameId) puzzle = await read(`puzzles/${gameId}`); } catch (error) { console.warn('Could not load Firebase puzzle.', error); }
+    try { await ensureSignedIn(); currentGameId = await read('games/currentGameId'); gameId ||= currentGameId; if (gameId) puzzle = await read(`puzzles/${gameId}`); } catch (error) { console.warn('Could not load Firebase puzzle.', error); }
   }
   state.puzzle = validatePuzzle(puzzle) ? CURRENT_PUZZLE : puzzle;
   state.words = scramble(state.puzzle.groups.flatMap((group, groupIndex) => group.words.map((word, wordIndex) => ({ word, groupIndex, id: `${groupIndex}-${wordIndex}` }))));
+  state.selected.clear(); state.solved = []; state.revealAnswers = false; state.mistakes = 0; state.attempts.clear(); state.finished = false; state.saved = false; $('#result-panel').hidden = true;
   $('#puzzle-title').textContent = state.puzzle.title;
-  $('#puzzle-number').textContent = state.puzzle.id === CURRENT_PUZZLE.id ? 'חידת הבכורה' : `חידה ${state.puzzle.id}`;
+  $('#puzzle-number').textContent = state.puzzle.number ? `חידה ${state.puzzle.number}` : state.puzzle.id === CURRENT_PUZZLE.id ? 'חידת הבכורה' : 'חידה';
   $('#connection-status').textContent = firebaseConfigured ? 'מחובר ל־Firebase' : 'מצב מקומי';
-  render();
+  setStatus('בחרו ארבע מילים שיש ביניהן קשר.'); render(); await renderArchive();
 }
+function puzzleLabel(puzzle) { return puzzle.number ? `חידה ${puzzle.number}` : 'חידה בארכיון'; }
+async function renderArchive() { const section = $('#archive-section'); const list = $('#archive-list'); list.replaceChildren(); if (!firebaseConfigured || !currentGameId) { section.hidden = true; return; } try { const puzzles = Object.values((await read('puzzles')) || {}); if (state.puzzle.id !== currentGameId) { const current = puzzles.find(puzzle => puzzle.id === currentGameId); if (current) list.append(itemButton(`חזרה ל־${puzzleLabel(current)}`, () => loadPuzzle())); } const archived = puzzles.filter(puzzle => puzzle.id !== currentGameId && puzzle.id !== state.puzzle.id).sort((a, b) => Number(a.number || 0) - Number(b.number || 0)); archived.forEach(puzzle => list.append(itemButton(`${puzzleLabel(puzzle)} — ${puzzle.title}`, () => loadPuzzle(puzzle.id)))); section.hidden = !list.children.length; } catch (error) { console.warn('Could not load archive.', error); section.hidden = true; } }
+function itemButton(label, handler) { const button = document.createElement('button'); button.type = 'button'; button.className = 'secondary'; button.textContent = label; button.addEventListener('click', handler); return button; }
 function render() {
   const board = $('#board'); board.replaceChildren();
   state.words.filter(tile => !state.revealAnswers && !state.solved.includes(tile.groupIndex)).forEach(tile => {

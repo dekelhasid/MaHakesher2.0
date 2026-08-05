@@ -7,6 +7,7 @@
   <title>מה הקשר?</title>
   <link rel="stylesheet" href="css/game.css">
   <link rel="stylesheet" href="css/archive.css">
+  <link rel="stylesheet" href="css/status.css">
 </head>
 <body>
   <main class="shell">
@@ -21,11 +22,11 @@
     <section class="intro" aria-labelledby="puzzle-title">
       <p class="eyebrow" id="puzzle-number">החידה היומית</p>
       <h1 id="puzzle-title">טוענים חידה…</h1>
-      <p id="game-status" class="status" role="status" aria-live="polite">בחרו ארבע מילים שיש ביניהן קשר.</p>
     </section>
 
     <section id="solved-rows" class="solved-rows" aria-label="קבוצות שנפתרו"></section>
     <section id="board" class="board" aria-label="לוח המילים"></section>
+    <p id="game-status" class="status game-status" role="status" aria-live="polite">בחרו ארבע מילים שיש ביניהן קשר.</p>
 
     <section class="game-controls" aria-label="פעולות משחק">
       <div class="mistake-meter" aria-label="טעויות שנותרו"><span>טעויות שנותרו</span><div id="mistakes" class="pips"></div></div>

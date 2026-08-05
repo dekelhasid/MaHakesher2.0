@@ -1,1 +1,1 @@
-.game-status{text-align:center;margin:14px 0 0}.pips{direction:rtl}.pip{background:#d9d8d3}.pip.used{background:var(--danger)}
+.game-controls .game-status{text-align:center;margin:0 0 12px;min-height:1.45em;font-size:1.16rem;font-weight:700}.mistake-meter .pips{direction:ltr;flex-direction:row-reverse}.mistake-meter .pip{background:#d9d8d3!important}.mistake-meter .pip.used{background:#4c9ac1!important}

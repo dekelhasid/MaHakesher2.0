@@ -7,7 +7,13 @@
   <title>מה הקשר?</title>
   <link rel="stylesheet" href="css/game.css">
   <link rel="stylesheet" href="css/archive.css">
-  <link rel="stylesheet" href="css/status.css">
+  <style>
+    .game-controls .game-status{margin:0 0 12px;min-height:1.45em;text-align:center;font-size:1.16rem;font-weight:700}
+    .game-controls .game-status.error{font-size:2rem}
+    .mistake-meter .pips{direction:ltr!important;flex-direction:row-reverse!important}
+    .mistake-meter .pip{background:#d9d8d3!important}
+    .mistake-meter .pip.used{background:#4c9ac1!important}
+  </style>
 </head>
 <body>
   <main class="shell">

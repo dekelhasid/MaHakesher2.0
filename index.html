@@ -76,7 +76,7 @@
 
   <dialog id="stats-dialog" class="modal"><form method="dialog"><button class="close" value="close" aria-label="סגירה">×</button><h2>סטטיסטיקות החידה</h2><div id="stats-content" class="stats-content"></div></form></dialog>
   <dialog id="message-dialog" class="modal message-modal"><form method="dialog"><button class="close" value="close" aria-label="סגירה">×</button><h2 id="message-title"></h2><p id="message-copy"></p><div class="dialog-actions"><button class="primary" value="close">הבנתי</button></div></form></dialog>
-  <dialog id="retry-dialog" class="modal"><form method="dialog" id="retry-form"><h2>עוד ניסיון?</h2><p>נגמרו כל הניסיונות. אפשר לנסות שוב את אותה חידה או להציג את הפתרון.</p><div class="dialog-actions"><button class="primary" value="retry" type="submit">ניסיון נוסף</button><button class="secondary" value="solution" type="submit">הצג פתרון</button></div></form></dialog>
+  <dialog id="retry-dialog" class="modal"><form method="dialog" id="retry-form"><h2>לא הפעם</h2><p>נגמרו כל הניסיונות. אפשר לשתף, להתחיל מחדש, או לחשוף את הפתרון.</p><div class="dialog-actions"><button class="secondary" id="failure-share" type="button">שיתוף</button><button class="primary" value="retry" type="submit">שחקו שוב</button><button class="secondary" value="reveal" type="submit">לחשוף פתרון</button></div></form></dialog>
 
   <script src="js/firebase-config.js"></script>
   <script type="module" src="js/game.js"></script>

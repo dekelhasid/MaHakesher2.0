@@ -7,7 +7,7 @@ import { highlight, shake } from './animations.js';
 import { shareResult } from './share.js';
 
 const MAX_MISTAKES = 5;
-const state = { puzzle: null, words: [], selected: new Set(), solved: [], revealAnswers: false, mistakes: 0, attempts: new Set(), finished: false, saved: false, player: getPlayer() };
+const state = { puzzle: null, words: [], selected: new Set(), solved: [], revealAnswers: false, mistakes: 0, attempts: new Set(), finished: false, saved: false, failureRecorded: false, player: getPlayer() };
 const $ = selector => document.querySelector(selector);
 let currentGameId = null;
 
@@ -18,15 +18,16 @@ async function loadPuzzle(requestedId = null) {
   }
   state.puzzle = validatePuzzle(puzzle) ? CURRENT_PUZZLE : puzzle;
   state.words = scramble(state.puzzle.groups.flatMap((group, groupIndex) => group.words.map((word, wordIndex) => ({ word, groupIndex, id: `${groupIndex}-${wordIndex}` }))));
-  state.selected.clear(); state.solved = []; state.revealAnswers = false; state.mistakes = 0; state.attempts.clear(); state.finished = false; state.saved = false; $('#result-panel').hidden = true;
+  state.selected.clear(); state.solved = []; state.revealAnswers = false; state.mistakes = 0; state.attempts.clear(); state.finished = false; state.saved = false; state.failureRecorded = false; $('#result-panel').hidden = true;
   $('#puzzle-title').textContent = state.puzzle.title;
   $('#puzzle-number').textContent = state.puzzle.number ? `חידה ${state.puzzle.number}` : state.puzzle.id === CURRENT_PUZZLE.id ? 'חידת הבכורה' : 'חידה';
   $('#connection-status').textContent = firebaseConfigured ? 'מחובר ל־Firebase' : 'מצב מקומי';
   setStatus('בחרו ארבע מילים שיש ביניהן קשר.'); render(); await renderArchive(); if (state.player.kind !== 'unknown') await restoreCompletedResult();
 }
 function puzzleLabel(puzzle) { return puzzle.number ? `חידה ${puzzle.number}` : 'חידה בארכיון'; }
-async function renderArchive() { const section = $('#archive-section'); const list = $('#archive-list'); list.replaceChildren(); if (!firebaseConfigured || !currentGameId) { section.hidden = true; return; } try { const puzzles = Object.values((await read('puzzles')) || {}); if (state.puzzle.id !== currentGameId) { const current = puzzles.find(puzzle => puzzle.id === currentGameId); if (current) list.append(itemButton(`חזרה ל־${puzzleLabel(current)}`, () => loadPuzzle())); } const archived = puzzles.filter(puzzle => puzzle.id !== currentGameId && puzzle.id !== state.puzzle.id).sort((a, b) => Number(a.number || 0) - Number(b.number || 0)); archived.forEach(puzzle => list.append(itemButton(`${puzzleLabel(puzzle)} — ${puzzle.title}`, () => loadPuzzle(puzzle.id)))); section.hidden = !list.children.length; } catch (error) { console.warn('Could not load archive.', error); section.hidden = true; } }
-function itemButton(label, handler) { const button = document.createElement('button'); button.type = 'button'; button.className = 'secondary'; button.textContent = label; button.addEventListener('click', handler); return button; }
+function publishedDate(puzzle) { const value = puzzle.originalPublishedAt || puzzle.firstPublishedAt || puzzle.publishedAt || puzzle.createdAt; if (!value) return 'ללא תאריך'; const date = new Date(value); return Number.isNaN(date.getTime()) ? 'ללא תאריך' : new Intl.DateTimeFormat('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date); }
+function archiveOptionLabel(puzzle) { return `${puzzleLabel(puzzle)} — ${puzzle.title} · ${publishedDate(puzzle)}`; }
+async function renderArchive() { const section = $('#archive-section'); const select = $('#archive-select'); select.replaceChildren(); if (!firebaseConfigured || !currentGameId) { section.hidden = true; return; } try { const puzzles = Object.values((await read('puzzles')) || {}).sort((a, b) => Number(a.number || 0) - Number(b.number || 0)); const hasArchive = puzzles.some(puzzle => puzzle.id !== currentGameId); if (!hasArchive) { section.hidden = true; return; } puzzles.forEach(puzzle => { const option = document.createElement('option'); option.value = puzzle.id; option.textContent = `${archiveOptionLabel(puzzle)}${puzzle.id === currentGameId ? ' · נוכחית' : ''}`; option.selected = puzzle.id === state.puzzle.id; select.append(option); }); select.onchange = () => { if (select.value !== state.puzzle.id) void loadPuzzle(select.value === currentGameId ? null : select.value); }; section.hidden = false; } catch (error) { console.warn('Could not load archive.', error); section.hidden = true; } }
 function render() {
   const board = $('#board'); board.replaceChildren();
   state.words.filter(tile => !state.revealAnswers && !state.solved.includes(tile.groupIndex)).forEach(tile => {
@@ -59,7 +60,7 @@ function submit() {
   if (matched >= 0) { state.solved.push(matched); state.selected.clear(); setStatus('נכון! מצאתם קבוצה.'); render(); if (state.solved.length === 4) finish(true); return; }
   if (state.attempts.has(key)) { setStatus('כבר ניסיתם את הרביעייה הזאת.', true); return; }
   state.attempts.add(key); const largestMatch = Math.max(...state.puzzle.groups.filter((_, index) => !state.solved.includes(index)).map(group => selected.filter(tile => group.words.includes(tile.word)).length));
-  state.mistakes += 1; setStatus(largestMatch === 3 ? 'כמעט, שלוש מארבע.' : 'לא נכון.', true); document.querySelectorAll('.tile[aria-pressed="true"]').forEach(shake); state.selected.clear(); render(); if (state.mistakes >= MAX_MISTAKES) finish(false);
+  state.mistakes += 1; setStatus(largestMatch === 3 ? 'כמעט, שלוש מארבע.' : 'לא נכון.', true); document.querySelectorAll('.tile[aria-pressed="true"]').forEach(shake); state.selected.clear(); render(); if (state.mistakes >= MAX_MISTAKES) showFailureDialog();
 }
 function shuffleBoard() { if (state.finished) return; state.words = scramble(state.words); state.selected.clear(); setStatus('המילים עורבבו.'); render(); }
 function clearSelection() { state.selected.clear(); setStatus('הבחירה נוקתה.'); render(); }
@@ -71,13 +72,24 @@ function giveHint() {
   pair.forEach(tile => highlight(document.querySelector(`[data-id="${tile.id}"]`)));
   setStatus('הרמז סימן שתי מילים. אפשר להוסיף עוד שתיים ולשלוח את הבחירה.');
 }
+async function recordAttempt(solved) {
+  const player = state.player; const result = { finished: true, solved, mistakes: state.mistakes, playerKind: player.kind, playerName: player.name || null, finishedAt: new Date().toISOString(), sessionId: resultId() };
+  saveCompletedResult(result);
+  try { await recordPlayerFinish(player, state.puzzle.id, result); } catch (error) { console.warn('Could not save personal result.', error); }
+  try { await recordResult(state.puzzle.id, result); } catch (error) { console.warn('Could not save overall result.', error); }
+  state.saved = true; return result;
+}
 async function finish(solved) {
-  state.finished = true; state.revealAnswers = !solved; render(); const player = state.player; const result = { finished: true, solved, mistakes: state.mistakes, playerKind: player.kind, playerName: player.name || null, finishedAt: new Date().toISOString(), sessionId: resultId() };
-  saveCompletedResult(result); const newlyRecorded = await recordPlayerFinish(player, state.puzzle.id, result); if (newlyRecorded) await recordResult(state.puzzle.id, result); state.saved = true;
+  state.finished = true; state.revealAnswers = !solved; render(); await recordAttempt(solved);
   $('#result-panel').hidden = false; $('#result-title').textContent = solved ? 'כל הכבוד!' : 'לא הפעם'; $('#result-copy').textContent = solved ? `פתרתם את החידה עם ${state.mistakes} טעויות.` : 'לא הצלחתם הפעם. הפתרון המלא מוצג למעלה.'; setStatus(solved ? 'החידה נפתרה.' : 'החידה הסתיימה והפתרון מוצג.', !solved);
 }
-function resultId() { return `${state.puzzle.id}-${state.player.kind === 'named' ? encodeURIComponent(state.player.name) : crypto.randomUUID?.() || Date.now()}`; }
-function resetGame() { state.words = scramble(state.puzzle.groups.flatMap((group, groupIndex) => group.words.map((word, wordIndex) => ({ word, groupIndex, id: `${groupIndex}-${wordIndex}` })))); state.selected.clear(); state.solved = []; state.revealAnswers = false; state.mistakes = 0; state.attempts.clear(); state.finished = false; state.saved = false; $('#result-panel').hidden = true; setStatus('בחרו ארבע מילים שיש ביניהן קשר.'); render(); }
+function resultId() { return `${state.puzzle.id}-${crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`; }
+function resetGame(message = 'בחרו ארבע מילים שיש ביניהן קשר.') { state.words = scramble(state.puzzle.groups.flatMap((group, groupIndex) => group.words.map((word, wordIndex) => ({ word, groupIndex, id: `${groupIndex}-${wordIndex}` })))); state.selected.clear(); state.solved = []; state.revealAnswers = false; state.mistakes = 0; state.attempts.clear(); state.finished = false; state.saved = false; state.failureRecorded = false; $('#result-panel').hidden = true; setStatus(message); render(); }
+async function recordFailureOnce() { if (state.failureRecorded) return; state.failureRecorded = true; await recordAttempt(false); }
+function showFailureDialog() { state.finished = true; render(); void recordFailureOnce(); openDialog('#retry-dialog'); }
+function revealFailureSolution() { $('#retry-dialog').close(); state.revealAnswers = true; state.finished = true; render(); $('#result-panel').hidden = false; $('#result-title').textContent = 'לא הפעם'; $('#result-copy').textContent = 'לא הצלחתם הפעם. הפתרון המלא מוצג למעלה.'; setStatus('החידה הסתיימה והפתרון מוצג.', true); }
+function shareFailure() { void (async () => { try { showMessage('שיתוף', await shareResult({ title: state.puzzle.title, mistakes: state.mistakes, solved: false })); } catch (error) { if (error.name !== 'AbortError') showMessage('שיתוף', 'לא הצלחנו לשתף כרגע.'); } })(); }
+function chooseRetry(event) { event.preventDefault(); const choice = event.submitter?.value; if (choice === 'reveal') { revealFailureSolution(); return; } $('#retry-dialog').close(); resetGame('ניסיון חדש לאותה חידה. בהצלחה!'); }
 async function renderStats() { const stats = await getStats(state.puzzle.id); $('#stats-content').replaceChildren(); const total = document.createElement('p'); total.textContent = stats.total ? `${stats.total} שחקנים ושחקניות סיימו את החידה.` : 'עדיין אין תוצאות של שחקנים מזוהים.'; $('#stats-content').append(total); stats.rows.forEach(row => { const element = document.createElement('div'); element.className = 'stat-row'; element.innerHTML = `<span>${row.label}</span><span class="bar"><i style="width:${row.percent}%"></i></span><strong>${row.percent}%</strong>`; $('#stats-content').append(element); }); openDialog('#stats-dialog'); }
 async function continueAsGuest() { state.player = setPlayer({ kind: 'guest', name: '' }); renderPlayerButton(); $('#player-dialog').close(); setStatus('ממשיכים כאורח/ת.'); await restoreCompletedResult(); }
 async function savePlayerFromDialog(event) { event.preventDefault(); const action = event.submitter?.value; if (action === 'guest') { await continueAsGuest(); return; }
@@ -86,6 +98,6 @@ async function savePlayerFromDialog(event) { event.preventDefault(); const actio
 let nameCheck;
 function checkKnownName() { clearTimeout(nameCheck); nameCheck = setTimeout(async () => { const name = $('#player-name').value.trim(); const existing = await findPlayer(name); $('#known-player-question').classList.toggle('hidden', !existing); $('#known-player-name').textContent = existing?.name || ''; }, 400); }
 function configurePlayerDialog() { const player = state.player; $('#player-name').value = player.kind === 'named' ? player.name : ''; $('#rename-player').hidden = player.kind !== 'named'; $('#rename-player').onclick = () => { $('#player-name').value = ''; $('#player-name').focus(); }; $('#known-player-question').classList.add('hidden'); openDialog('#player-dialog'); }
-function bind() { $('#submit-button').addEventListener('click', submit); $('#shuffle-button').addEventListener('click', shuffleBoard); $('#clear-button').addEventListener('click', clearSelection); $('#hint-button').addEventListener('click', giveHint); $('#new-game-button').addEventListener('click', resetGame); $('#share-button').addEventListener('click', async () => { try { showMessage('שיתוף', await shareResult({ title: state.puzzle.title, mistakes: state.mistakes, solved: state.solved.length === 4 })); } catch (error) { if (error.name !== 'AbortError') showMessage('שיתוף', 'לא הצלחנו לשתף כרגע.'); } }); $('#stats-button').addEventListener('click', renderStats); $('#player-button').addEventListener('click', configurePlayerDialog); $('#player-form').addEventListener('submit', savePlayerFromDialog); $('#player-dialog .close').addEventListener('click', event => { event.preventDefault(); void continueAsGuest(); }); $('#player-name').addEventListener('input', checkKnownName); }
+function bind() { $('#submit-button').addEventListener('click', submit); $('#shuffle-button').addEventListener('click', shuffleBoard); $('#clear-button').addEventListener('click', clearSelection); $('#hint-button').addEventListener('click', giveHint); $('#new-game-button').addEventListener('click', resetGame); $('#share-button').addEventListener('click', async () => { try { showMessage('שיתוף', await shareResult({ title: state.puzzle.title, mistakes: state.mistakes, solved: state.solved.length === 4 })); } catch (error) { if (error.name !== 'AbortError') showMessage('שיתוף', 'לא הצלחנו לשתף כרגע.'); } }); $('#stats-button').addEventListener('click', renderStats); $('#player-button').addEventListener('click', configurePlayerDialog); $('#player-form').addEventListener('submit', savePlayerFromDialog); $('#retry-form').addEventListener('submit', chooseRetry); $('#failure-share').addEventListener('click', shareFailure); $('#retry-dialog').addEventListener('cancel', event => { event.preventDefault(); $('#retry-dialog').close(); resetGame('ניסיון חדש לאותה חידה. בהצלחה!'); }); $('#player-dialog .close').addEventListener('click', event => { event.preventDefault(); void continueAsGuest(); }); $('#player-name').addEventListener('input', checkKnownName); }
 async function init() { renderPlayerButton(); bind(); await loadPuzzle(); if (state.player.kind === 'unknown') configurePlayerDialog(); }
 init();

@@ -13,6 +13,9 @@
     .mistake-meter .pips{direction:ltr!important;flex-direction:row-reverse!important}
     .mistake-meter .pip{background:#d9d8d3!important}
     .mistake-meter .pip.used{background:#4c9ac1!important}
+    .archive-picker{display:grid;gap:8px;max-width:460px;margin:0 auto;text-align:right}
+    .archive-picker label{font-weight:700}
+    .archive-picker select{width:100%;padding:11px 12px;border:1px solid #b8b5ac;border-radius:7px;background:#fff;color:#172b3a;font:inherit}
   </style>
 </head>
 <body>
@@ -52,7 +55,7 @@
 
     <section id="archive-section" class="archive-section" hidden>
       <h2>ארכיון חידות</h2>
-      <div id="archive-list" class="archive-list"></div>
+      <div class="archive-picker"><label for="archive-select">בחירת חידה</label><select id="archive-select" aria-label="בחירת חידה מהארכיון"></select></div>
     </section>
 
     <footer><a href="admin.html">ניהול חידות</a><span>·</span><span id="connection-status">מצב מקומי</span></footer>
@@ -73,6 +76,7 @@
 
   <dialog id="stats-dialog" class="modal"><form method="dialog"><button class="close" value="close" aria-label="סגירה">×</button><h2>סטטיסטיקות החידה</h2><div id="stats-content" class="stats-content"></div></form></dialog>
   <dialog id="message-dialog" class="modal message-modal"><form method="dialog"><button class="close" value="close" aria-label="סגירה">×</button><h2 id="message-title"></h2><p id="message-copy"></p><div class="dialog-actions"><button class="primary" value="close">הבנתי</button></div></form></dialog>
+  <dialog id="retry-dialog" class="modal"><form method="dialog" id="retry-form"><h2>עוד ניסיון?</h2><p>נגמרו כל הניסיונות. אפשר לנסות שוב את אותה חידה או להציג את הפתרון.</p><div class="dialog-actions"><button class="primary" value="retry" type="submit">ניסיון נוסף</button><button class="secondary" value="solution" type="submit">הצג פתרון</button></div></form></dialog>
 
   <script src="js/firebase-config.js"></script>
   <script type="module" src="js/game.js"></script>

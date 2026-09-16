@@ -1,17 +1,40 @@
 {
   "rules": {
-    ".read": true,
-    "games": { ".write": "auth != null && auth.token.email === 'admin@mahakesher2nekuda0.com'" },
+    ".read": false,
+    ".write": false,
+    "games": {
+      "currentGameId": {
+        ".read": true,
+        ".write": "auth != null && auth.token.email === 'admin@mahakesher2nekuda0.com'"
+      },
+      "draft": {
+        ".read": "auth != null && auth.token.email === 'admin@mahakesher2nekuda0.com'",
+        ".write": "auth != null && auth.token.email === 'admin@mahakesher2nekuda0.com'"
+      }
+    },
+    "puzzles": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'admin@mahakesher2nekuda0.com'"
+    },
     "stats": {
       "$gameId": {
-        ".write": "auth != null"
+        ".read": true,
+        "$attemptId": {
+          ".write": "auth != null && !data.exists()"
+        }
       }
     },
     "players": {
       "$playerName": {
+        ".read": "auth != null",
         ".write": "auth != null"
       }
     },
-    "puzzles": { ".write": "auth != null && auth.token.email === 'admin@mahakesher2nekuda0.com'" }
+    "feedback": {
+      ".read": "auth != null && auth.token.email === 'admin@mahakesher2nekuda0.com'",
+      "$feedbackId": {
+        ".write": "auth != null && (!data.exists() || auth.token.email === 'admin@mahakesher2nekuda0.com')"
+      }
+    }
   }
 }

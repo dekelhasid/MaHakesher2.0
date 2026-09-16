@@ -26,5 +26,40 @@ async function loadFeedback() {
   } catch { target.innerHTML = '<p class="empty">לא ניתן לטעון משובים. בדקו את כללי Firebase.</p>'; }
 }
 
+async function loadResults() {
+  const target = $('#results-library');
+  if (!target || !firebaseConfigured) return;
+  target.replaceChildren();
+  try {
+    const puzzleById = (await read('puzzles')) || {};
+    const groups = await Promise.all(Object.entries(puzzleById).map(async ([puzzleId, puzzle]) => {
+      const results = await read(`stats/${puzzleId}`);
+      const entries = Object.values(results || {})
+        .filter(item => item?.finished && item.playerKind === 'named' && item.playerName?.trim())
+        .sort((a, b) => String(b.finishedAt || '').localeCompare(String(a.finishedAt || '')));
+      return { puzzleId, number: Number(puzzle.number || 0), title: puzzle.title || 'חידה ללא כותרת', entries };
+    }));
+    const visibleGroups = groups.filter(group => group.entries.length).sort((a, b) => a.number - b.number || a.puzzleId.localeCompare(b.puzzleId));
+    if (!visibleGroups.length) { target.innerHTML = '<p class="empty">עדיין אין תוצאות של שחקנים בעלי שם.</p>'; return; }
+    visibleGroups.forEach(group => {
+      const card = document.createElement('article'); card.className = 'puzzle-item';
+      const solved = group.entries.filter(item => item.solved).length;
+      const heading = document.createElement('h3'); heading.textContent = `${group.number ? `חידה ${group.number} · ` : ''}${group.title}`; card.append(heading);
+      const summary = document.createElement('p'); summary.textContent = `${group.entries.length} סיומי ניסיון עם שם · ${solved} הצליחו · ${group.entries.length - solved} לא הצליחו`; card.append(summary);
+      group.entries.forEach(item => {
+        const row = document.createElement('div'); row.className = 'result-item';
+        const name = document.createElement('p'); name.textContent = item.playerName.trim(); row.append(name);
+        const outcome = document.createElement('p'); outcome.className = `result-result ${item.solved ? 'solved' : 'failed'}`; outcome.textContent = item.solved ? `נפתרה · ${Number(item.mistakes || 0)} טעויות` : `לא נפתרה · ${Number(item.mistakes || 0)} טעויות`; row.append(outcome);
+        const time = document.createElement('p'); time.textContent = dateText(item.finishedAt); row.append(time);
+        card.append(row);
+      });
+      target.append(card);
+    });
+  } catch {
+    target.innerHTML = '<p class="empty">לא ניתן לטעון תוצאות. בדקו את כללי Firebase.</p>';
+  }
+}
+
 $('#refresh-feedback')?.addEventListener('click', loadFeedback);
-if (firebaseConfigured) observeAuth(user => { if (isAdmin(user)) void loadFeedback(); });
+$('#refresh-results')?.addEventListener('click', loadResults);
+if (firebaseConfigured) observeAuth(user => { if (isAdmin(user)) { void loadFeedback(); void loadResults(); } });

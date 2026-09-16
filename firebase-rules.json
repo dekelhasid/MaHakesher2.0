@@ -25,6 +25,7 @@
       }
     },
     "players": {
+      ".read": "auth != null && auth.token.email === 'admin@mahakesher2nekuda0.com'",
       "$playerName": {
         ".read": "auth != null",
         ".write": "auth != null"

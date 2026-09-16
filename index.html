@@ -16,6 +16,8 @@
     .archive-picker{display:grid;gap:8px;max-width:460px;margin:0 auto;text-align:right}
     .archive-picker label{font-weight:700}
     .archive-picker select{width:100%;padding:11px 12px;border:1px solid #b8b5ac;border-radius:7px;background:#fff;color:#172b3a;font:inherit}
+    .feedback-panel{max-width:680px;margin:26px auto;padding:22px;border:1px solid #d7d4cc;border-radius:10px;background:#fff;text-align:right}
+    .feedback-panel h2{margin:0 0 6px}.feedback-panel p{margin:0 0 12px}.feedback-panel textarea{box-sizing:border-box;width:100%;min-height:110px;padding:10px;border:1px solid #b8b5ac;border-radius:7px;font:inherit;resize:vertical}.feedback-actions{display:flex;align-items:center;gap:12px;margin-top:10px}.feedback-status{min-height:1.4em;color:#52616c}
   </style>
 </head>
 <body>
@@ -51,6 +53,14 @@
       <h2 id="result-title"></h2>
       <p id="result-copy"></p>
       <div class="result-actions"><button id="share-button" class="primary" type="button">שיתוף</button><button id="new-game-button" class="secondary" type="button">שחקו שוב</button></div>
+    </section>
+
+    <section id="feedback-panel" class="feedback-panel" hidden aria-labelledby="feedback-heading">
+      <h2 id="feedback-heading">משוב על החידה</h2>
+      <p>מה חשבתם על החידה? המשוב יישמר עם שמכם אם בחרתם שם שחקן.</p>
+      <label for="feedback-message">המשוב שלכם</label>
+      <textarea id="feedback-message" maxlength="800" placeholder="כתבו כאן…"></textarea>
+      <div class="feedback-actions"><button id="feedback-submit" class="primary" type="button">שליחת משוב</button><span id="feedback-status" class="feedback-status" role="status"></span></div>
     </section>
 
     <section id="archive-section" class="archive-section" hidden>
